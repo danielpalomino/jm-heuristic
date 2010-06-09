@@ -2,7 +2,6 @@ bin
 Changes_detail.txt
 CHANGES.TXT
 copyright.txt
-.dep.inc
 disclaimer.txt
 doc
 FREXT_changes.txt
@@ -31,7 +30,7 @@ lencod_vc9.vcproj.GACI08.Daniel.user
 lencod_vc9.vcproj.GACI10.Felipe.user
 lencod_vc9.vcproj.GACI13.Felipe.user
 Makefile
-Makefile-JMHeuristic.mk
+Makefile-jm-heuristic.mk
 nbproject
 Readme.txt
 rtpdump
