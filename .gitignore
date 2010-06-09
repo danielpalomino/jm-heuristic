@@ -2,6 +2,7 @@ bin
 Changes_detail.txt
 CHANGES.TXT
 copyright.txt
+.dep.inc
 disclaimer.txt
 doc
 FREXT_changes.txt
