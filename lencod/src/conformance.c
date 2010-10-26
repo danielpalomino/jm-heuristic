@@ -186,12 +186,21 @@ void ProfileCheck(InputParameters *p_Inp)
      (p_Inp->ProfileIDC != EXTENDED ) &&
      (p_Inp->ProfileIDC != FREXT_HP    ) &&
      (p_Inp->ProfileIDC != FREXT_Hi10P ) &&
+#if (MVC_EXTENSION_ENABLE)
+     (p_Inp->ProfileIDC != MULTIVIEW_HIGH )         &&  // MVC multiview high profile
+     (p_Inp->ProfileIDC != STEREO_HIGH )         &&  // MVC stereo high profile
+#endif
      (p_Inp->ProfileIDC != FREXT_Hi422 ) &&
      (p_Inp->ProfileIDC != FREXT_Hi444 ) &&
      (p_Inp->ProfileIDC != FREXT_CAVLC444 ))
   {
+#if (MVC_EXTENSION_ENABLE)
+    snprintf(errortext, ET_SIZE, "Profile must be in\n\n  66 (Baseline),\n  77 (Main),\n  88 (Extended),\n 100 (High),\n 110 (High 10 or High 10 Intra)\n"
+      " 122 (High 4:2:2 or High 4:2:2 Intra),\n 244 (High 4:4:4 predictive or High 4:4:4 Intra),\n  44 (CAVLC 4:4:4 Intra)\n 118 (MVC profile)\n");
+#else
     snprintf(errortext, ET_SIZE, "Profile must be in\n\n  66 (Baseline),\n  77 (Main),\n  88 (Extended),\n 100 (High),\n 110 (High 10 or High 10 Intra)\n"
       " 122 (High 4:2:2 or High 4:2:2 Intra),\n 244 (High 4:4:4 predictive or High 4:4:4 Intra),\n  44 (CAVLC 4:4:4 Intra)\n");
+#endif
     error (errortext, 500);
   }
 
@@ -203,9 +212,9 @@ void ProfileCheck(InputParameters *p_Inp)
 
   if (p_Inp->redundant_pic_flag)
   {
-    if (p_Inp->ProfileIDC != BASELINE)
+    if ((p_Inp->ProfileIDC != BASELINE) && (p_Inp->ProfileIDC != EXTENDED))
     {
-      snprintf(errortext, ET_SIZE, "Redundant pictures are only allowed in Baseline profile (ProfileIDC = 66).");
+      snprintf(errortext, ET_SIZE, "Redundant pictures are only allowed in Baseline (ProfileIDC = 66) and Extended (ProfileIDC = 88) profiles.");
       error (errortext, 500);
     }
   }
@@ -360,7 +369,7 @@ void ProfileCheck(InputParameters *p_Inp)
  */
 void LevelCheck(VideoParameters *p_Vid, InputParameters *p_Inp)
 {
-  unsigned int PicSizeInMbs = ( (p_Inp->output.width + p_Vid->auto_crop_right) * (p_Inp->output.height + p_Vid->auto_crop_bottom) ) >> 8;
+  unsigned int PicSizeInMbs = ( (p_Inp->output.width[0] + p_Vid->auto_crop_right) * (p_Inp->output.height[0] + p_Vid->auto_crop_bottom) ) >> 8;
   unsigned int MBProcessingRate = (unsigned int) (PicSizeInMbs * p_Inp->output.frame_rate + 0.5);
   int cpbBrFactor = ( p_Inp->ProfileIDC >= FREXT_HP ) ? 1500 : 1200;
   
@@ -464,14 +473,14 @@ void clip_mv_range(VideoParameters *p_Vid, int search_range, MotionVector *mv, i
  *    Clip motion vector range given encoding level
  ***********************************************************************
  */
-void test_clip_mvs(VideoParameters *p_Vid, short mv[2], Boolean write_mb)
+void test_clip_mvs(VideoParameters *p_Vid, MotionVector *mv, Boolean write_mb)
 {
-  if ((mv[0] < p_Vid->MaxHmvR[4]) || (mv[0] > p_Vid->MaxHmvR[5]) || (mv[1] < p_Vid->MaxVmvR[4]) || (mv[1] > p_Vid->MaxVmvR[5]))
+  if ((mv->mv_x < p_Vid->MaxHmvR[4]) || (mv->mv_x > p_Vid->MaxHmvR[5]) || (mv->mv_y < p_Vid->MaxVmvR[4]) || (mv->mv_y > p_Vid->MaxVmvR[5]))
   {
     if (write_mb == TRUE)
-      printf("Warning MVs (%d %d) were out of range x(%d %d) y(%d %d). Clipping mvs before writing\n", mv[0], mv[1], p_Vid->MaxHmvR[4], p_Vid->MaxHmvR[5], p_Vid->MaxVmvR[4], p_Vid->MaxVmvR[5]);
-    mv[0] = (short) iClip3( p_Vid->MaxHmvR[4], p_Vid->MaxHmvR[5], mv[0]);
-    mv[1] = (short) iClip3( p_Vid->MaxVmvR[4], p_Vid->MaxVmvR[5], mv[1]);
+      printf("Warning MVs (%d %d) were out of range x(%d %d) y(%d %d). Clipping mvs before writing\n", mv->mv_x, mv->mv_y, p_Vid->MaxHmvR[4], p_Vid->MaxHmvR[5], p_Vid->MaxVmvR[4], p_Vid->MaxVmvR[5]);
+    mv->mv_x = (short) iClip3( p_Vid->MaxHmvR[4], p_Vid->MaxHmvR[5], mv->mv_x);
+    mv->mv_y = (short) iClip3( p_Vid->MaxVmvR[4], p_Vid->MaxVmvR[5], mv->mv_y);
   }
 }
   
@@ -481,9 +490,9 @@ void test_clip_mvs(VideoParameters *p_Vid, short mv[2], Boolean write_mb)
  *    Clip motion vector range given encoding level
  ***********************************************************************
  */
-int out_of_bounds_mvs(VideoParameters *p_Vid, short mv[2])
+int out_of_bounds_mvs(VideoParameters *p_Vid, const MotionVector *mv)
 {
-  return ((mv[0] < p_Vid->MaxHmvR[4]) || (mv[0] > p_Vid->MaxHmvR[5]) || (mv[1] < p_Vid->MaxVmvR[4]) || (mv[1] > p_Vid->MaxVmvR[5]));
+  return ((mv->mv_x < p_Vid->MaxHmvR[4]) || (mv->mv_x > p_Vid->MaxHmvR[5]) || (mv->mv_y < p_Vid->MaxVmvR[4]) || (mv->mv_y > p_Vid->MaxVmvR[5]));
 }
 
 int InvalidWeightsForBiPrediction(Slice *currSlice, Block8x8Info* b8x8info, int mode)
@@ -539,7 +548,7 @@ int InvalidMotionVectors(VideoParameters *p_Vid, Slice *currSlice, Block8x8Info*
     {
     case 0:
       l0ref = (int) b8x8info->best[mode][cur_blk].ref[LIST_0];
-      if (out_of_bounds_mvs(p_Vid, currSlice->all_mv [LIST_0][l0ref][mode][j][i]))
+      if (out_of_bounds_mvs(p_Vid, &currSlice->all_mv [LIST_0][l0ref][mode][j][i]))
       {
         invalid_mode = 1;
         return invalid_mode;
@@ -547,7 +556,7 @@ int InvalidMotionVectors(VideoParameters *p_Vid, Slice *currSlice, Block8x8Info*
       break;
     case 1:
       l1ref = (int) b8x8info->best[mode][cur_blk].ref[LIST_1];
-      if (out_of_bounds_mvs(p_Vid, currSlice->all_mv [LIST_1][l1ref][mode][j][i]))
+      if (out_of_bounds_mvs(p_Vid, &currSlice->all_mv [LIST_1][l1ref][mode][j][i]))
       {
         invalid_mode = 1;
         return invalid_mode;
@@ -556,12 +565,12 @@ int InvalidMotionVectors(VideoParameters *p_Vid, Slice *currSlice, Block8x8Info*
     case 2:
       l0ref = (int) b8x8info->best[mode][cur_blk].ref[LIST_0];
       l1ref = (int) b8x8info->best[mode][cur_blk].ref[LIST_1];
-      if (out_of_bounds_mvs(p_Vid, currSlice->all_mv [LIST_0][l0ref][mode][j][i]))
+      if (out_of_bounds_mvs(p_Vid, &currSlice->all_mv [LIST_0][l0ref][mode][j][i]))
       {
         invalid_mode = 1;
         return invalid_mode;
       }
-      if (out_of_bounds_mvs(p_Vid, currSlice->all_mv [LIST_1][l1ref][mode][j][i]))
+      if (out_of_bounds_mvs(p_Vid, &currSlice->all_mv [LIST_1][l1ref][mode][j][i]))
       {
         invalid_mode = 1;
         return invalid_mode;
@@ -577,7 +586,7 @@ int InvalidMotionVectors(VideoParameters *p_Vid, Slice *currSlice, Block8x8Info*
 
 Boolean CheckPredictionParams(Macroblock  *currMB, Block8x8Info *b8x8info, int mode)
 {
-  Slice *currSlice = currMB->p_slice;
+  Slice *currSlice = currMB->p_Slice;
   // check if all sub-macroblock partitions can be used with 8x8 transform
   if (mode == P8x8 && currMB->luma_transform_size_8x8_flag == TRUE)
   {
@@ -617,6 +626,7 @@ Boolean CheckPredictionParams(Macroblock  *currMB, Block8x8Info *b8x8info, int m
         }
       }
     }
+
   }
 
   return TRUE;

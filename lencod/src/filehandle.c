@@ -37,7 +37,7 @@
 void error(char *text, int code)
 {
   fprintf(stderr, "%s\n", text);
-  flush_dpb(p_Enc->p_Vid, &p_Enc->p_Inp->output);
+  flush_dpb(p_Enc->p_Vid->p_Dpb, &p_Enc->p_Inp->output);
   exit(code);
 }
 
@@ -102,6 +102,23 @@ int start_sequence(VideoParameters *p_Vid, InputParameters *p_Inp)
   len += p_Vid->WriteNALU (p_Vid, nalu);
   FreeNALU (nalu);
 
+#if (MVC_EXTENSION_ENABLE)
+  if(p_Inp->num_of_views==2)
+  {
+    int bits;
+    nalu = NULL;
+    nalu = GenerateSubsetSeq_parameter_set_NALU (p_Vid);
+    bits = p_Vid->WriteNALU (p_Vid, nalu);
+    len += bits;
+    p_Vid->p_Stats->bit_ctr_parametersets_n_v[1] = bits;
+    FreeNALU (nalu);
+  }
+  else
+  {
+    p_Vid->p_Stats->bit_ctr_parametersets_n_v[1] = 0;
+  }
+#endif
+
   //! Lets write now the Picture Parameter sets. Output will be equal to the total number of bits spend here.
   for (i=0;i<total_pps;i++)
   {
@@ -117,7 +134,31 @@ int start_sequence(VideoParameters *p_Vid, InputParameters *p_Inp)
   }
 
   p_Vid->p_Stats->bit_ctr_parametersets_n = len;
+#if (MVC_EXTENSION_ENABLE)
+  if(p_Inp->num_of_views==2)
+  {
+    p_Vid->p_Stats->bit_ctr_parametersets_n_v[0] = len - p_Vid->p_Stats->bit_ctr_parametersets_n_v[1];
+  }
+#endif
   return 0;
+}
+
+int end_of_stream(VideoParameters *p_Vid)
+{
+  int bits;
+  NALU_t *nalu;
+
+  nalu = AllocNALU(MAXNALUSIZE);
+  nalu->startcodeprefix_len = 4;
+  nalu->forbidden_bit       = 0;  
+  nalu->nal_reference_idc   = 0;
+  nalu->nal_unit_type       = NALU_TYPE_EOSTREAM;
+  nalu->len = 0;
+  bits = p_Vid->WriteNALU (p_Vid, nalu);
+  
+  p_Vid->p_Stats->bit_ctr_parametersets += bits;
+  FreeNALU (nalu);
+  return bits;
 }
 
 /*!
@@ -149,10 +190,22 @@ int rewrite_paramsets(VideoParameters *p_Vid)
   len += p_Vid->WriteNALU (p_Vid, nalu);
   FreeNALU (nalu);
 
+#if (MVC_EXTENSION_ENABLE)
+  if(p_Inp->num_of_views==2)
+  {
+    int bits;
+    nalu = GenerateSubsetSeq_parameter_set_NALU (p_Vid);
+    bits = p_Vid->WriteNALU (p_Vid, nalu);
+    len += bits;
+    p_Vid->p_Stats->bit_ctr_parametersets_n_v[1] = bits;
+    FreeNALU (nalu);
+  }
+#endif
+
   //! Lets write now the Picture Parameter sets. Output will be equal to the total number of bits spend here.
   for (i=0;i<total_pps;i++)
   {
-     len = write_PPS(p_Vid, len, i);
+    len = write_PPS(p_Vid, len, i);
   }
 
   if (p_Inp->GenerateSEIMessage)
@@ -164,6 +217,12 @@ int rewrite_paramsets(VideoParameters *p_Vid)
   }
 
   p_Vid->p_Stats->bit_ctr_parametersets_n = len;
+#if (MVC_EXTENSION_ENABLE)
+  if(p_Inp->num_of_views==2)
+  {
+    p_Vid->p_Stats->bit_ctr_parametersets_n_v[0] = len - p_Vid->p_Stats->bit_ctr_parametersets_n_v[1];
+  }
+#endif
   return 0;
 }
 
