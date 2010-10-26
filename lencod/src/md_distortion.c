@@ -118,6 +118,33 @@ distblk compute_SSE16x16_thres(imgpel **imgRef, imgpel **imgSrc, int xRef, int x
 
   return dist_scale(distortion);
 }
+
+//Daniel Daniel Daniel
+distblk compute_SAD16x16_thres(Macroblock *currMB, ColorPlane pl) {
+    int i, j;
+    distblk sad;
+
+    Slice *currSlice = currMB->p_Slice;
+    VideoParameters *p_Vid = currSlice->p_Vid;
+    imgpel ***curr_mpr_16x16 = currSlice->mpr_16x16[pl];
+    imgpel *img_Y, *predY;
+    int new_intra_mode = currMB->i16mode;
+
+    sad = 0;
+    for (j = 0; j < 16; ++j) {
+        predY = curr_mpr_16x16[new_intra_mode][j];
+        img_Y = &p_Vid->pCurImg[currMB->opix_y + j][currMB->pix_x];
+        for (i = 0; i < 16; ++i) {
+            sad += abs(img_Y[i] - predY[i]);
+        }
+    }
+
+/*
+    fprintf(residualI16MB, "%d\n", sad);
+*/
+    return sad;
+}
+
 /*!
  ***********************************************************************
  * \brief
@@ -165,6 +192,33 @@ distblk compute_SSE4x4(imgpel **imgRef, imgpel **imgSrc, int xRef, int xSrc)
   }
 
   return dist_scale(distortion);
+}
+
+/*!
+ ***********************************************************************
+ * DANIEL
+ * \brief
+ *    compute 4x4 SSE
+ ***********************************************************************
+ */
+
+distblk compute_SAD4x4(Macroblock *currMB, ColorPlane pl, int block_x, int block_y) {
+    int i, j;
+    distblk sad;
+    Slice *currSlice = currMB->p_Slice;
+    int **mb_ores = currSlice->mb_ores[pl];
+
+    sad = 0;
+    for (i = block_y; i < block_y + BLOCK_SIZE; i++) {
+        for (j = block_x; j < block_x + BLOCK_SIZE; j++) {
+            sad += abs(mb_ores[i][j]);
+        }
+    }
+/*
+    fprintf(residualI4MB, "%d\n",sad);
+*/
+
+    return sad;
 }
 
 /*!
