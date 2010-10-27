@@ -18,7 +18,6 @@ ldecod_vc9.vcproj
 lencod_vc7.vcproj
 lencod_vc8.vcproj
 lencod_vc9.vcproj
-Makefile
 Makefile-jm-heuristic.mk
 nbproject
 Readme.txt
