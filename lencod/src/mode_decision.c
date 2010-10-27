@@ -113,13 +113,16 @@ void init_enc_mb_params(Macroblock* currMB, RD_PARAMS *enc_mb, int intra) {
 
     enc_mb->curr_mb_field = (short) ((currSlice->mb_aff_frame_flag) && (currMB->mb_field));
 
-    /*
       // Set valid modes
       enc_mb->valid[I8MB]  = (short) ((!p_Inp->DisableIntraInInter || intra )?   p_Inp->Transform8x8Mode : 0);
       enc_mb->valid[I4MB]  = (short) ((!p_Inp->DisableIntraInInter || intra )? ((p_Inp->Transform8x8Mode == 2) ? 0 : 1) : 0);
+      
       enc_mb->valid[I4MB]  = (short) ((!p_Inp->DisableIntra4x4  ) ? enc_mb->valid[I4MB] : 0);
+
       enc_mb->valid[I16MB] = (short) ((!p_Inp->DisableIntraInInter || intra )? 1 : 0);
+
       enc_mb->valid[I16MB] = (short) ((!p_Inp->DisableIntra16x16) ? enc_mb->valid[I16MB] : 0);
+
       enc_mb->valid[IPCM]  = (short) ((!p_Inp->DisableIntraInInter || intra )? p_Inp->EnableIPCM : 0);
       enc_mb->valid[SI4MB] = 0;
       //enc_mb->valid[SI4MB] = (short) (currSlice->slice_type == SI_SLICE);
@@ -137,13 +140,10 @@ void init_enc_mb_params(Macroblock* currMB, RD_PARAMS *enc_mb, int intra) {
       enc_mb->valid[6]     = (short) (!intra && p_Inp->InterSearch[bslice][6] && !(p_Inp->Transform8x8Mode==2));
       enc_mb->valid[7]     = (short) (!intra && p_Inp->InterSearch[bslice][7] && !(p_Inp->Transform8x8Mode==2));
       enc_mb->valid[P8x8]  = (short) (enc_mb->valid[4] || enc_mb->valid[5] || enc_mb->valid[6] || enc_mb->valid[7]);
-     */
 
     //Codigo Daniel Palomino 03/05/2010
     //BEGIN
     // Set valid modes
-
-
     nada = fscanf(ourModes, "%d", & intra_mode);
     if (intra_mode == I16MB) {
         enc_mb->valid[I4MB] = 0;
@@ -152,20 +152,6 @@ void init_enc_mb_params(Macroblock* currMB, RD_PARAMS *enc_mb, int intra) {
         enc_mb->valid[I4MB] = 1;
         enc_mb->valid[I16MB] = 0;
     }
-
-    enc_mb->valid[I8MB] = 0;
-    enc_mb->valid[IPCM] = 0;
-    enc_mb->valid[SI4MB] = 0;
-
-    enc_mb->valid[0] = 0;
-    enc_mb->valid[1] = 0;
-    enc_mb->valid[2] = 0;
-    enc_mb->valid[3] = 0;
-    enc_mb->valid[4] = 0;
-    enc_mb->valid[5] = 0;
-    enc_mb->valid[6] = 0;
-    enc_mb->valid[7] = 0;
-    enc_mb->valid[P8x8] = 0;
     //END DANIEL
 
     if (currSlice->UseRDOQuant && p_Inp->RDOQ_CP_Mode && (p_Vid->qp != p_Vid->masterQP))
